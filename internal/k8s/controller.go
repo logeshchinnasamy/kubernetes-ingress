@@ -61,6 +61,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
+
+	certmanager "github.com/nginxinc/kubernetes-ingress/internal/certmanager"
 )
 
 const (
@@ -158,6 +160,7 @@ type LoadBalancerController struct {
 	appProtectConfiguration       appprotect.Configuration
 	dosConfiguration              *appprotectdos.Configuration
 	configMap                     *api_v1.ConfigMap
+	certManagerController         *certmanager.CertManagerController
 }
 
 var keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
@@ -196,6 +199,7 @@ type NewLoadBalancerControllerInput struct {
 	IsLatencyMetricsEnabled      bool
 	IsTLSPassthroughEnabled      bool
 	SnippetsEnabled              bool
+	CertManagerEnabled			 bool
 }
 
 // NewLoadBalancerController creates a controller
@@ -2385,7 +2389,15 @@ func (lbc *LoadBalancerController) createVirtualServerEx(virtualServer *conf_v1.
 	}
 
 	if virtualServer.Spec.TLS != nil && virtualServer.Spec.TLS.Secret != "" {
+
 		secretKey := virtualServer.Namespace + "/" + virtualServer.Spec.TLS.Secret
+
+		if virtualServer.Spec.TLS.CertManager != nil {
+			err := lbc.manageCmCertificates(virtualServer.Spec, secretKey)
+			if err != nil {
+				glog.Warningf("Error getting Cert-Manager config for VirtualServer %v/%v: %v", virtualServer.Namespace, virtualServer.Name, err)
+			}
+		}
 
 		secretRef := lbc.secretStore.GetSecret(secretKey)
 		if secretRef.Error != nil {
@@ -2694,6 +2706,13 @@ func (lbc *LoadBalancerController) addJWTSecretRefs(secretRefs map[string]*secre
 			return secretRef.Error
 		}
 	}
+
+	return nil
+}
+
+func (lbc *LoadBalancerController) manageCmCertificates(vsSpec conf_v1.VirtualServerSpec, secretKey string) error {
+
+	
 
 	return nil
 }

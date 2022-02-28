@@ -115,6 +115,26 @@ func validateTLS(tls *v1.TLS, fieldPath *field.Path) field.ErrorList {
 
 	allErrs = append(allErrs, validateTLSRedirect(tls.Redirect, fieldPath.Child("redirect"))...)
 
+	allErrs = append(allErrs, validateTLSCmFields(tls.CertManager, tls.Secret, fieldPath.Child("cert-manager"))...)
+
+	return allErrs
+}
+
+func validateTLSCmFields(cm *v1.CertManager, secret string, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if cm == nil {
+		// valid, cert-manager is not required
+		return allErrs
+	}
+
+	if secret == "" {
+		// invalid, secret name is required for cert-manager configuration
+		allErrs = append(allErrs, field.Forbidden(fieldPath, "field requires TLS.Secret to be specified"))
+	}
+
+	// TODO: Add validation for each field
+
 	return allErrs
 }
 
